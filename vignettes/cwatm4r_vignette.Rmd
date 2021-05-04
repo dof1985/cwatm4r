@@ -1,0 +1,180 @@
+---
+title: "cwatm4r - an interface to set up and run hydrological simulations using CWatM"
+author: "Dor Fridman"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{cwatm4r - an interface to set up and run hydrological simulations using CWatM}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+# Introduction
+
+<p>
+The Community Water Model (CWatM) allows the assessment of water supply and human and environmental water demands at both global and regional levels. The model was developed by the Water Research Group in the International Institute for Applied System Analysis (IIASA).
+</p>
+<p>
+`cwatm4r` provides an interface to set up and run hydrological simulations using CWatM. It also has data preparation and post-processing capacities.
+</p>
+
+
+# Download & Install CWatM
+
+<p> Future development</p>
+
+# Getting started
+
+<p>
+The settings file allows the user to control CWatM's modules and change its behaviour. `cwatm4r` provides tools to explore, modify and export the settings file from within `R` or via an MS Excel spreadsheet. 
+```{r, echo=TRUE}
+library(cwatm4r) # load cwatm4r
+library(magrittr)
+```
+</p>
+
+## Explore the settings file
+<p>
+The settings file is split into different sections which `cwatm4r` refer to as `domains`. The `getSettingsDomains()` function print a vecotr with all domain names.
+```{r, echo=TRUE}
+getSettingsDomains()
+```
+The users can explore the settings of each domain by  using the `getSettingsTable()` function. <br />
+For example, the following call explores the settings of the `FILE_PATHS` section of the default settings file. 
+The output from this function is a `data.frame` with 3 columns defining: the model's `variable`, its `value`, and in some cases additional information as a `comment`.
+The `FILE_PATHS` domain specify the path to the model files, inputs, and outputs.
+
+```{r, echo=TRUE}
+getSettingsTable(domain = "FILE_PATHS") %>% head(3)
+```
+</p>
+
+## Running CWatM for the first time
+<p>
+The easiest way for an initial set up of CWatM settings is by using a spreadsheet. The `defineParameters()` function creates a default settings spreadsheet in the model's folder on the local machine. The user should make sure that the model's folder has a sub-folder named `cwatm_settings`.
+</p>
+```{r, echo=TRUE, eval=FALSE}
+# define the path to the model files
+mdlfolder <- "./cwatm_model"
+
+# create the sub-folder for the settings file
+dir.create(paste0(mdlfolder, "/cwatm_settings")) 
+
+# export the default settings file to "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx"
+defineParameters(pathRoot = mdlfolder) 
+
+```
+<p>
+Once the settings spreadsheet is ready, the user can convert it to a `settings.ini` file by using the `createSettingsFile()` function. 
+```{r, echo=TRUE, eval=FALSE}
+# define the path to the model files
+mdlfolder <- "./cwatm_model"
+
+# create the sub-folder for the settings file
+dir.create(paste0(mdlfolder, "/cwatm_settings")) 
+
+# create a settings.ini file as "./cwat_model/cwatm_settings/myFirstSettingsFile.ini"
+createSettingsFile(spreadsheet =  "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx", 
+                   output_name = "myFirstSettingsFile") 
+
+```
+
+</p>
+
+<p>
+Now all is set for the first CWatM run. The user can call the model with the `call_cwatm()`.
+</p>
+
+```{r, echo=TRUE, eval=FALSE}
+call_cwatm(settingsfile = "./cwatm_model/cwatm_settigns/myFirstSettingsFile.ini") 
+
+```
+
+<p>
+The user pass optional arguments to the `system()` function using the `...` argument. For example, as a default behaviour, CWatM runs quietly within `R`. Using `intern = TRUE` changes this behabiour, so the command-line outputs are captured and printes as an `R` character vector. For additional options see `?system`.
+</p>
+
+```{r, echo=TRUE, eval=FALSE}
+# This model will run loudly
+call_cwatm(settingsfile = "./cwatm_model/cwatm_settigns/myFirstSettingsFile.ini", intern = TRUE) 
+
+```
+
+<p>
+The user can also skip the `createSettingsFile()` step and run the model using the settings spreadsheet. In this case, the `call_cwatm()` function will create a settings file using the combination of the spreadsheet file name and a unique date-time identifier (E.g., cwatm_settings_20212904102753.ini) as a naming convention. <br />
+</p>
+
+
+```{r, echo=TRUE, eval=FALSE}
+call_cwatm(settingsfile = "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx")
+
+```
+
+</p>
+
+## Modyfing the settings file from within R
+
+<ol>
+  <li>What is a changeset?</li>
+  <li>Create your first changeset</li>
+  <li>Create your first changeset</li>
+  <li>From a changeset to a new settings file</li>
+  <li>Use a loop to create multiple settings files</li>
+</ol>
+
+# END OF VIGNETTE
+# DELETE AFTER COMPLETION
+Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
+
+- Never uses retina figures
+- Has a smaller default figure size
+- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
+
+## Vignette Info
+
+Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
+
+## Styles
+
+The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
+
+    output: 
+      rmarkdown::html_vignette:
+        css: mystyles.css
+
+## Figures
+
+The figure sizes have been customised so that you can easily put two images side-by-side. 
+
+```{r, fig.show='hold'}
+plot(1:10)
+plot(10:1)
+```
+
+You can enable figure captions by `fig_caption: yes` in YAML:
+
+    output:
+      rmarkdown::html_vignette:
+        fig_caption: yes
+
+Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
+
+## More Examples
+
+You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
+
+```{r, echo=FALSE, results='asis'}
+knitr::kable(head(mtcars, 10))
+```
+
+Also a quote using `>`:
+
+> "He who gives up [code] safety for [code] speed deserves neither."
+([via](https://twitter.com/hadleywickham/status/504368538874703872))

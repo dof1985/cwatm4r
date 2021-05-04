@@ -1,0 +1,23 @@
+Package: cwatm4r
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R: 
+    person(given = "Dor",
+           family = "Fridman",
+           role = c("aut", "cre"),
+           email = "dof1985@gmail.com",
+           comment = c(ORCID = "0000-0003-3908-3571"))
+Description: The Community Water Model (CWatM) allows the assessment of water supply and human and environmental water demands at both global and regional levels. The model was developed by the Water Research Group in the International Institute for Applied System Analysis (IIASA). 'cwatm4r' provides an interface to set up and run hydrological simulations using CWatM. It also has data preparation and post-processing capacities.
+License: `use_mit_license()`, `use_gpl3_license()` or friends to
+    pick a license
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.1
+VignetteBuilder: knitr
+Suggests:
+	knitr, rmarkdown, magrittr
+Imports:
+	openxlsx
+Depends: 
+    R (>= 2.10)
