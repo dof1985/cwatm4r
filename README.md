@@ -1,4 +1,4 @@
-# cwatm4r
+# cwatm4r - an R interface for running hydrological simulations using IIASA's community water model
 
 [![latest](https://img.shields.io/github/last-commit/dof1985/cwatm4r)](https://github.com/dof1985/cwatm4r)
 
