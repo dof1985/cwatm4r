@@ -1,10 +1,10 @@
 ---
-title: "cwatm4r - an interface to set up and run hydrological simulations using CWatM"
+title: "Getting Started with cwatm4r"
 author: "Dor Fridman"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{cwatm4r - an interface to set up and run hydrological simulations using CWatM}
+  %\VignetteIndexEntry{Getting Started with cwatm4r}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
