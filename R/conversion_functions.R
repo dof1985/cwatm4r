@@ -210,7 +210,7 @@ raster_as_nc <- function(raster_in, time, nc_attrs, pathfile_out = "../output.nc
 #' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin")
 #' }
 #' @export
-createSettingsFile <- function(spreadsheet, output_name = "cwatm_settings.ini") {
+settings_spreadsheet2ini <- function(spreadsheet, output_name = "cwatm_settings.ini") {
 
   # check and set .ini suffix for the output_(file)name
   if(getSuffix(output_name) != "ini") output_name <- paste0(output_name, ".ini")
@@ -239,7 +239,7 @@ createSettingsFile <- function(spreadsheet, output_name = "cwatm_settings.ini") 
 
 
 
-# Function to create a settingsObject from a cwatm settings file ####
+# Function to create a settingsList from a cwatm settings file ####
 
 #' Import a cwatm .ini setting files to a settings List
 #'
@@ -259,7 +259,7 @@ createSettingsFile <- function(spreadsheet, output_name = "cwatm_settings.ini") 
 #' PUT EXAMPLE HERE
 #' }
 #' @export
-readSettingsIni <- function(inipath = "./settings_cwatm.ini") {
+settings_ini2list <- function(inipath = "./settings_cwatm.ini") {
   # can't read comments
   lnes <-  readLines(inipath)
   doms  <- getSettingsDomains_ini(inipath = inipath, value = TRUE)
@@ -278,3 +278,77 @@ readSettingsIni <- function(inipath = "./settings_cwatm.ini") {
 
 #inipath = "D:/Dropbox/IIASA/cwatm4r_test/settings_rhine30min.ini"
 ####
+
+# Function to create an excel settings spreadsheet ####
+
+#' Define CWatM settings & parameters
+#'
+#' @description
+#' This function creates a default settings spreadsheet, granting the user with complete control over all model parameters.
+#'
+#' @details
+#' The `pathRoot` variable indicates the root folder that stores CWatM files.
+#' The user can choose a settingList object (e.g., as in the output of `settings_ini2list()`). Otherwise (if `NULL`) the function uses a default settingsList
+#' The output settings file path is: `pathRoot/cwatm_settings/cwatm_settings.xlsx`, and the user should make sure that path exists.
+#'
+#' @param pathRoot a character vector with the path to the CWatM root folder
+#' @param pathRoot a named settingsList object (Defaults to `NULL`; see Details)
+#' @param overwrite logical. Should the function  overwrite existing files?
+#' @return an MS Excel settings spreadsheet (see Details)
+#' @examples
+#' \dontrun{
+#' defineParameters(pathRoot = "C:/IIASA/cwatm", overwrite = TRUE)
+#' }
+#' @export
+settings_list2spreadsheet <- function(pathRoot, settingsList = NULL, overwrite = FALSE) {
+
+  # Error handling - check folder structure
+  if(!dir.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings"))) {
+    stop(sprintf("The path `%s` does not exist. Create these directories to continue or set a different `pathRoot`\n", paste0(gsub("/", "//", pathRoot), "//CWatM_settings")))
+  }
+
+  # Error handling - check overwrite opt.
+  if(!overwrite & file.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"))) {
+    stop("The file already exists. Use overwrite = TRUE to proceed\n")
+  }
+  if(!is.null(settingsList)) settings <- settingsList
+  settings[[3]][1, 2] <- pathRoot
+
+  settings_wb <- openxlsx::createWorkbook(title = "cwatm4r-settingFilesSpreadsheet")
+
+  for(n in names(settings)) {
+    dim <- c(nrow(settings[[n]]), ncol(settings[[n]]))
+    openxlsx::addWorksheet(wb = settings_wb,
+                           sheetName = n)
+    openxlsx::writeData(wb = settings_wb,
+                        sheet = n,
+                        x = settings[[n]])
+
+    openxlsx::addStyle(wb = settings_wb, # styling of first column
+                       sheet = n,
+                       cols = 1,
+                       rows = 1:(dim[1] + 1),
+                       style = openxlsx::createStyle(fontColour = "white",
+                                                     textDecoration = "bold",
+                                                     bgFill = "black"))
+
+    openxlsx::addStyle(wb = settings_wb, # styling of first row
+                       sheet = n,
+                       cols = 1:(dim[2] + 1),
+                       rows = 1,
+                       style = openxlsx::createStyle(fontColour = "white",
+                                                     textDecoration = "bold",
+                                                     bgFill = "black"))
+
+    openxlsx::setColWidths(wb = settings_wb,
+                           sheet = n,
+                           cols = 1:(dim[2] + 1),
+                           widths = "auto")
+  }
+
+  openxlsx::saveWorkbook(wb = settings_wb,
+                         file = paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"),
+                         overwrite = overwrite)
+}
+
+

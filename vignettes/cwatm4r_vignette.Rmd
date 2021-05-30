@@ -58,7 +58,7 @@ getSettingsTable(domain = "FILE_PATHS") %>% head(3)
 
 ## Running CWatM for the first time
 <p>
-The easiest way for an initial set up of CWatM settings is by using a spreadsheet. The `defineParameters()` function creates a default settings spreadsheet in the model's folder on the local machine. The user should make sure that the model's folder has a sub-folder named `cwatm_settings`.
+The easiest way for an initial set up of CWatM settings is by using a spreadsheet. The `settings_list2spreadsheet()` function creates a default settings spreadsheet in the model's folder on the local machine. The user should make sure that the model's folder has a sub-folder named `cwatm_settings`.
 </p>
 ```{r, echo=TRUE, eval=FALSE}
 # define the path to the model files
@@ -68,11 +68,30 @@ mdlfolder <- "./cwatm_model"
 dir.create(paste0(mdlfolder, "/cwatm_settings")) 
 
 # export the default settings file to "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx"
-defineParameters(pathRoot = mdlfolder) 
+settings_list2spreadsheet(pathRoot = mdlfolder) 
 
 ```
 <p>
-Once the settings spreadsheet is ready, the user can convert it to a `settings.ini` file by using the `createSettingsFile()` function. 
+<br />
+The default behaviour is to use a pre-saved template  generte the settings file, but the user can use an existing `settings.ini` file as a template instead, by converting it with `settings_ini2list()` function.
+```{r, echo=TRUE, eval=FALSE}
+# convert a settings.ini file to a settingsList
+sl <- settings_ini2list(inipath = "./cwatm_settings.ini")
+
+# define the path to the model files
+mdlfolder <- "./cwatm_model"
+
+# create the sub-folder for the settings file
+dir.create(paste0(mdlfolder, "/cwatm_settings")) 
+
+# export the default settings file to "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx"
+settings_list2spreadsheet(pathRoot = mdlfolder, settingsList = sl) 
+
+```
+</p>
+
+<p>
+Once the settings spreadsheet is ready, the user can convert it to a `settings.ini` file by using the `settings_spreadsheet2ini()` function. 
 ```{r, echo=TRUE, eval=FALSE}
 # define the path to the model files
 mdlfolder <- "./cwatm_model"
@@ -81,7 +100,7 @@ mdlfolder <- "./cwatm_model"
 dir.create(paste0(mdlfolder, "/cwatm_settings")) 
 
 # create a settings.ini file as "./cwat_model/cwatm_settings/myFirstSettingsFile.ini"
-createSettingsFile(spreadsheet =  "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx", 
+settings_spreadsheet2ini(spreadsheet =  "./cwatm_model/cwatm_settigns/cwatm_settings.xlsx", 
                    output_name = "myFirstSettingsFile") 
 
 ```
@@ -108,7 +127,7 @@ call_cwatm(settingsfile = "./cwatm_model/cwatm_settigns/myFirstSettingsFile.ini"
 ```
 
 <p>
-The user can also skip the `createSettingsFile()` step and run the model using the settings spreadsheet. In this case, the `call_cwatm()` function will create a settings file using the combination of the spreadsheet file name and a unique date-time identifier (E.g., cwatm_settings_20212904102753.ini) as a naming convention. <br />
+The user can also skip the `settings_spreadsheet2ini()` step and run the model using the settings spreadsheet. In this case, the `call_cwatm()` function will create a settings file using the combination of the spreadsheet file name and a unique date-time identifier (E.g., cwatm_settings_20212904102753.ini) as a naming convention. <br />
 </p>
 
 

@@ -1,75 +1,3 @@
-# Function to create an excel settings spreadsheet ####
-
-#' Define CWatM settings & parameters
-#'
-#' @description
-#' This function creates a default settings spreadsheet, granting the user with complete control over all model parameters.
-#'
-#' @details
-#' The `pathRoot` variable indicates the root folder that stores CWatM files.
-#' The output settings file path is: `pathRoot/cwatm_settings/cwatm_settings.xlsx`, and the user should make sure that path exists.
-#'
-#' @param pathRoot a character vector with the path to the CWatM root folder
-#' @param overwrite logical. Should the function  overwrite existing files?
-#' @return an MS Excel settings spreadsheet (see Details)
-#' @examples
-#' \dontrun{
-#' defineParameters(pathRoot = "C:/IIASA/cwatm", overwrite = TRUE)
-#' }
-#' @export
-defineParameters <- function(pathRoot, overwrite = FALSE) {
-
-  # Error handling - check folder structure
-  if(!dir.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings"))) {
-    stop(sprintf("The path `%s` does not exist. Create these directories to continue or set a different `pathRoot`\n", paste0(gsub("/", "//", pathRoot), "//CWatM_settings")))
-  }
-
-  # Error handling - check overwrite opt.
-  if(!overwrite & file.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"))) {
-    stop("The file already exists. Use overwrite = TRUE to proceed\n")
-  }
-
-  settings[[3]][1, 2] <- pathRoot
-
-  settings_wb <- openxlsx::createWorkbook(title = "cwatm4r-settingFilesSpreadsheet")
-
-  for(n in names(settings)) {
-    dim <- c(nrow(settings[[n]]), ncol(settings[[n]]))
-    openxlsx::addWorksheet(wb = settings_wb,
-                           sheetName = n)
-    openxlsx::writeData(wb = settings_wb,
-                        sheet = n,
-                        x = settings[[n]])
-
-    openxlsx::addStyle(wb = settings_wb, # styling of first column
-                           sheet = n,
-                           cols = 1,
-                           rows = 1:(dim[1] + 1),
-                           style = openxlsx::createStyle(fontColour = "white",
-                                                          textDecoration = "bold",
-                                                          bgFill = "black"))
-
-    openxlsx::addStyle(wb = settings_wb, # styling of first row
-                       sheet = n,
-                       cols = 1:(dim[2] + 1),
-                       rows = 1,
-                       style = openxlsx::createStyle(fontColour = "white",
-                                                     textDecoration = "bold",
-                                                     bgFill = "black"))
-
-    openxlsx::setColWidths(wb = settings_wb,
-                           sheet = n,
-                           cols = 1:(dim[2] + 1),
-                           widths = "auto")
-  }
-
-  openxlsx::saveWorkbook(wb = settings_wb,
-                         file = paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"),
-                         overwrite = overwrite)
-}
-
-
-
 # Function to modify a settings.ini/xlsx from the consule using a table #### TO DEVELOP ####
 
 modifySettingsFile <- function(settings, changeset, output_name) {
@@ -132,7 +60,7 @@ call_cwatm <- function(settingsfile,  overwrite = FALSE, ...) { # overwrite is n
   # if settingsFileType == xlsx -> create a settings.ini file
   if(settingsFileType == "xlsx") {
     output_name_unique <- sprintf("cwatm_settings_%s.ini", timeid())
-    createSettingsFile(spreadsheet = settingsfile, output_name = output_name_unique)
+    settings_spreadsheet2ini(spreadsheet = settingsfile, output_name = output_name_unique)
     settingsfile <- strsplit(settingsfile, split = "/")[[1]]
     settingsfile[length(settingsfile)] <- output_name_unique
     settingsfile <- paste0(settingsfile, collapse = "/")
