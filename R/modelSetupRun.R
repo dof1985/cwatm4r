@@ -70,56 +70,6 @@ defineParameters <- function(pathRoot, overwrite = FALSE) {
 
 
 
-# Function to create a settings.ini from an ms excel spreadsheet ####
-
-#' Converts a settings spreadsheet to a `settings.ini` file
-#'
-#' @description
-#' This function converts a default settings spreadsheet to a `settings.ini` file.
-#'
-#' @details
-#' CWatM requires a `settings.ini` file to run. This function converts the user-friendly MS Excel   to a `settings.ini` file.
-#' The output file is saved to the same folder as the spreadsheet.
-#'
-#' @param spreadsheet a character vector with the path to  an MS Excel default settings spreadsheet
-#' @param output_name a character vector providing the settings file name (see Details)
-#' @return a `settings.ini` file (see Details)
-#'
-#' @examples
-#' \dontrun{
-#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin.ini")
-#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin")
-#' }
-#' @export
-createSettingsFile <- function(spreadsheet, output_name = "cwatm_settings.ini") {
-
-  # check and set .ini suffix for the output_(file)name
-  if(getSuffix(output_name) != "ini") output_name <- paste0(output_name, ".ini")
-
-  #check if spreadsheet names match the template name list; ISSUE A WARNING IF DOMAINS ARE MISSING
-  nameList <- openxlsx::getSheetNames(spreadsheet)
-  if(!all(getSettingsDomains() %in% nameList)) {
-    warning(sprintf("The '%s' domain was not found in the spreadsheet. This may cause errors in the model run\n" , getSettingsDomains()[!getSettingsDomains() %in% nameList]))
-  }
-
-  settings_out <- unlist(lapply(nameList[-1], function(domain) {
-
-    string_out <- sprintf("[%s]", domain)
-    string_out <- c(string_out, apply(getSettingsTable(domain = domain), MARGIN = 1, FUN = buildSettingLine), "######")
-    return(string_out)
-  }))
-
-  # write output to file
-  path <- strsplit(spreadsheet, "/")[[1]]
-  path[length(path)] <- output_name
-  path <- paste0(path, collapse = "/")
-
-  writeLines(settings_out, path)
-
-}
-
-
-
 # Function to modify a settings.ini/xlsx from the consule using a table #### TO DEVELOP ####
 
 modifySettingsFile <- function(settings, changeset, output_name) {

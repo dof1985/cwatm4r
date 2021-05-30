@@ -125,4 +125,17 @@ getSettingsDomains_ini <- function(inipath, value = TRUE) {
                        grep("^\\[[A-Za-z_-]+\\]$|^\\[[A-Za-z_-]+ [A-Za-z_-]+\\]$", readLines(inipath), value = value)))
 }
 
+
+# validata raster input, if character load, if rasterlayer do noting
+validateRaster <- function(r) {
+  if(class(r) %in% "RasterLayer") return(r)
+  if(class(r) %in% "character") {
+    r <- raster::raster(r)
+    return(r)
+  } else {
+    return(stop("fucntion expecting a 'RasterLayer' or a path to a GeoTiff"))
+  }
+
+
+}
 #####

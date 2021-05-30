@@ -19,5 +19,7 @@ Suggests:
 	knitr, rmarkdown, magrittr
 Imports:
 	openxlsx
+	ncdf4
+	raster
 Depends: 
     R (>= 2.10)
