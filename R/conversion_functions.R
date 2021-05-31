@@ -78,7 +78,12 @@ raster_as_nc <- function(raster_in, time, nc_attrs, pathfile_out = "../output.nc
   print("Mapping data to array")
 
   # map number of variables
-  n <- unique(unlist(lapply(raster_in, function(x) length(x@layers))))
+  if(class(raster_in[[1]]) %in% "RasterLayer") {
+    n <- 1
+  } else {
+    n <- unique(unlist(lapply(raster_in, function(x) length(x@layers))))
+  }
+
   if(length(n) > 1) stop("all items in 'raster_in' should have the same number of 'RasterLayers'")
 
   all_Arrays <- lapply(seq_len(n), function(lyr_i) {
