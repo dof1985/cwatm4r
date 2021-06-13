@@ -4,10 +4,12 @@
 \alias{call_cwatm}
 \title{Call a CWatM simulation from within R}
 \usage{
-call_cwatm(settingsfile, overwrite = FALSE, ...)
+call_cwatm(modelpath = NULL, settingsfile, overwrite = FALSE, ...)
 }
 \arguments{
-\item{settingsfile}{a character vector with the path to  an MS Excel settings spreadsheet or to a \code{settings.ini} file (see Details)}
+\item{modelpath}{character. defines the path to the folder with CWatM (see details)}
+
+\item{settingsfile}{character. defines the path to  an MS Excel settings spreadsheet or to a \code{settings.ini} file (see details)}
 
 \item{overwrite}{logical. Currently out of use}
 
@@ -25,6 +27,8 @@ In case the function receives a settings file as an MS Excel file (.xlsx),
 the function calls \code{createSettingsFile()},
 and saves the output in the same folder with a combination of file name and a unique date-time identifier (E.g., \code{cwatm_settings_20212904102753.ini}).
 The function automatically uses this \code{settings.ini} file for the call.
+The \code{modelpath} argument indicates where are the CWatM files located (e.g., run_cwatm.py). If set to \code{NULL} the function assumes that they are located in
+the parent directory of the PathRoot folder.
 }
 \examples{
 \dontrun{

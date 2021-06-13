@@ -347,8 +347,11 @@ settings_setFilePaths <- function(settingsList, PathRoot = NULL, PathOut = NULL,
 #' the function calls `createSettingsFile()`,
 #' and saves the output in the same folder with a combination of file name and a unique date-time identifier (E.g., `cwatm_settings_20212904102753.ini`).
 #' The function automatically uses this `settings.ini` file for the call.
+#' The `modelpath` argument indicates where are the CWatM files located (e.g., run_cwatm.py). If set to `NULL` the function assumes that they are located in
+#' the parent directory of the PathRoot folder.
 #'
-#' @param settingsfile a character vector with the path to  an MS Excel settings spreadsheet or to a `settings.ini` file (see Details)
+#' @param settingsfile character. defines the path to  an MS Excel settings spreadsheet or to a `settings.ini` file (see details)
+#' @param modelpath character. defines the path to the folder with CWatM (see details)
 #' @param overwrite logical. Currently out of use
 #' @param ... additional arguments passed to the `system()` function
 #' @return CWatM outputs
@@ -358,7 +361,7 @@ settings_setFilePaths <- function(settingsList, PathRoot = NULL, PathOut = NULL,
 #' call_cwatm(settingsfile = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings_sorekBasin.ini")
 #' }
 #' @export
-call_cwatm <- function(settingsfile,  overwrite = FALSE, ...) { # overwrite is not usable at the moment
+call_cwatm <- function(modelpath = NULL, settingsfile,  overwrite = FALSE, ...) { # overwrite is not usable at the moment
 
   settingsFileType <- getSuffix(settingsfile)
 
@@ -376,7 +379,7 @@ call_cwatm <- function(settingsfile,  overwrite = FALSE, ...) { # overwrite is n
   if(settingsFileType == "ini")  filepaths <- getSettingsTable_ini(inipath = settingsfile, domain = "FILE_PATHS")
 
   pathout   <- filepaths$value[filepaths$variable %in% "PathOut"]
-  modelpath <- filepaths$value[filepaths$variable %in% "PathRoot"]
+  if(is.null(modelpath)) modelpath <- filepaths$value[filepaths$variable %in% "PathRoot"]
 
   # error handling check output directory exists
   if(!dir.exists(pathout)) stop(sprintf("Model outputs' folder does not exist at %s\n", pathout))
@@ -391,7 +394,7 @@ call_cwatm <- function(settingsfile,  overwrite = FALSE, ...) { # overwrite is n
 
   }
 
-
+  if(!grepl("/$", modelpath)) modelpath <- paste0(modelpath, "/")
   call <- sprintf("python %srun_cwatm.py %s -l", modelpath, settingsfile)
   system(call, ...)
 
