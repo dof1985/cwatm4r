@@ -20,7 +20,7 @@ getSettingsDomains <- function() {
 
 # get settings from a sepcific domain  ####
 
-# get settings domains  ####
+# get settings table  ####
 
 #' Get all domains names from the default settings file
 #'
@@ -84,7 +84,8 @@ getSettingsTable_ini <- function(inipath, domain) {
 # DO NOT EXPORT
 
 buildSettingLine <- function(line) {
-  sprintf("%s = %s      # %s", line["variable"], line["value"], line["comment"])
+  c(sprintf("# %s", line["comment"]),
+  sprintf("%s = %s", line["variable"], line["value"]))
 }
 
 # create a one-line data.frame from a settings file line ####
@@ -126,7 +127,8 @@ getSettingsDomains_ini <- function(inipath, value = TRUE) {
 }
 
 
-# validata raster input, if character load, if rasterlayer do noting
+# validata raster input, if character load, if rasterlayer do noting ####
+# DO NOT EXPORT
 validateRaster <- function(r) {
   if(class(r) %in% "RasterLayer") return(r)
   if(class(r) %in% "character") {
@@ -138,4 +140,20 @@ validateRaster <- function(r) {
 
 
 }
+
+# update values in a settings List object for a selected domain and columns. a replacement function ####
+# DO NOT EXPORT
+
+`updateSetting<-` <-  function(tbl, setting, col = "value", value) {
+  tbl[tbl$variable %in% setting, col] <- value
+  return(tbl)
+}
+# remove multiple patterns (strip patterns) from a character vector ####
+strip <- function(strip, x, ...) {
+  for(s in strip) {
+    x <- gsub(s, "", x, ...)
+  }
+  return(x)
+}
+
 #####

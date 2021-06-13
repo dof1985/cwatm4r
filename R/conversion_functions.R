@@ -203,22 +203,21 @@ raster_as_nc <- function(raster_in, time, nc_attrs, pathfile_out = "../output.nc
 #'
 #' @details
 #' CWatM requires a `settings.ini` file to run. This function converts the user-friendly MS Excel   to a `settings.ini` file.
-#' The output file is saved to the same folder as the spreadsheet.
 #'
-#' @param spreadsheet a character vector with the path to  an MS Excel default settings spreadsheet
-#' @param output_name a character vector providing the settings file name (see Details)
+#' @param spreadsheet character vector,  the path to  an MS Excel default settings spreadsheet
+#' @param output_path character vector,  the settings file's path and name
 #' @return a `settings.ini` file (see Details)
 #'
 #' @examples
 #' \dontrun{
-#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin.ini")
-#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin")
+#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "./cwatm_settings_sorekBasin.ini")
+#' createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "./cwatm_settings_sorekBasin")
 #' }
 #' @export
-settings_spreadsheet2ini <- function(spreadsheet, output_name = "cwatm_settings.ini") {
+settings_spreadsheet2ini <- function(spreadsheet, output_path = "./cwatm_settings.ini") {
 
   # check and set .ini suffix for the output_(file)name
-  if(getSuffix(output_name) != "ini") output_name <- paste0(output_name, ".ini")
+  if(getSuffix(output_path) != "ini") output_path <- paste0(output_path, ".ini")
 
   #check if spreadsheet names match the template name list; ISSUE A WARNING IF DOMAINS ARE MISSING
   nameList <- openxlsx::getSheetNames(spreadsheet)
@@ -234,11 +233,11 @@ settings_spreadsheet2ini <- function(spreadsheet, output_name = "cwatm_settings.
   }))
 
   # write output to file
-  path <- strsplit(spreadsheet, "/")[[1]]
-  path[length(path)] <- output_name
-  path <- paste0(path, collapse = "/")
+  # path <- strsplit(spreadsheet, "/")[[1]] # CHANGE TO SAVE TO USER DEFINED PATH&NAME
+  # path[length(path)] <- output_name
+  # path <- paste0(path, collapse = "/")
 
-  writeLines(settings_out, path)
+  writeLines(settings_out, output_path)
 
 }
 
@@ -292,32 +291,30 @@ settings_ini2list <- function(inipath = "./settings_cwatm.ini") {
 #' This function creates a default settings spreadsheet, granting the user with complete control over all model parameters.
 #'
 #' @details
-#' The `pathRoot` variable indicates the root folder that stores CWatM files.
 #' The user can choose a settingList object (e.g., as in the output of `settings_ini2list()`). Otherwise (if `NULL`) the function uses a default settingsList
-#' The output settings file path is: `pathRoot/cwatm_settings/cwatm_settings.xlsx`, and the user should make sure that path exists.
 #'
-#' @param pathRoot a character vector with the path to the CWatM root folder
-#' @param pathRoot a named settingsList object (Defaults to `NULL`; see Details)
+#' @param settingsList named list, a settingsList object (Defaults to `NULL`; see Details)
+#' @param output_path character vector, the settings spreadsheet's path and name
 #' @param overwrite logical. Should the function  overwrite existing files?
 #' @return an MS Excel settings spreadsheet (see Details)
 #' @examples
 #' \dontrun{
-#' defineParameters(pathRoot = "C:/IIASA/cwatm", overwrite = TRUE)
+#' settings_list2spreadsheet( output_path = "./cwatm_settings.xlsx", overwrite = TRUE)
 #' }
 #' @export
-settings_list2spreadsheet <- function(pathRoot, settingsList = NULL, overwrite = FALSE) {
+settings_list2spreadsheet <- function(settingsList = NULL, output_path = "./cwatm_settings.xlsx", overwrite = FALSE) {
 
-  # Error handling - check folder structure
-  if(!dir.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings"))) {
-    stop(sprintf("The path `%s` does not exist. Create these directories to continue or set a different `pathRoot`\n", paste0(gsub("/", "//", pathRoot), "//CWatM_settings")))
-  }
+  # # Error handling - check folder structure
+  # if(!dir.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings"))) {
+  #   stop(sprintf("The path `%s` does not exist. Create these directories to continue or set a different `pathRoot`\n", paste0(gsub("/", "//", pathRoot), "//CWatM_settings")))
+  # }
 
   # Error handling - check overwrite opt.
-  if(!overwrite & file.exists(paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"))) {
+  if(!overwrite & file.exists(output_path)) {
     stop("The file already exists. Use overwrite = TRUE to proceed\n")
   }
   if(!is.null(settingsList)) settings <- settingsList
-  settings[[3]][1, 2] <- pathRoot
+  # settings[[3]][1, 2] <- pathRoot
 
   settings_wb <- openxlsx::createWorkbook(title = "cwatm4r-settingFilesSpreadsheet")
 
@@ -325,6 +322,9 @@ settings_list2spreadsheet <- function(pathRoot, settingsList = NULL, overwrite =
     dim <- c(nrow(settings[[n]]), ncol(settings[[n]]))
     openxlsx::addWorksheet(wb = settings_wb,
                            sheetName = n)
+
+    dt <- settings[[n]]
+    dt$value <- strip(c("^ ", " $"), dt$value)
     openxlsx::writeData(wb = settings_wb,
                         sheet = n,
                         x = settings[[n]])
@@ -352,7 +352,8 @@ settings_list2spreadsheet <- function(pathRoot, settingsList = NULL, overwrite =
   }
 
   openxlsx::saveWorkbook(wb = settings_wb,
-                         file = paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"),
+                         file = output_path, # change to user defined path + name
+                         #file = paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"),
                          overwrite = overwrite)
 }
 

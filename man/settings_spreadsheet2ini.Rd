@@ -4,12 +4,12 @@
 \alias{settings_spreadsheet2ini}
 \title{Converts a settings spreadsheet to a \code{settings.ini} file}
 \usage{
-settings_spreadsheet2ini(spreadsheet, output_name = "cwatm_settings.ini")
+settings_spreadsheet2ini(spreadsheet, output_path = "./cwatm_settings.ini")
 }
 \arguments{
-\item{spreadsheet}{a character vector with the path to  an MS Excel default settings spreadsheet}
+\item{spreadsheet}{character vector,  the path to  an MS Excel default settings spreadsheet}
 
-\item{output_name}{a character vector providing the settings file name (see Details)}
+\item{output_path}{character vector,  the settings file's path and name}
 }
 \value{
 a \code{settings.ini} file (see Details)
@@ -19,11 +19,10 @@ This function converts a default settings spreadsheet to a \code{settings.ini} f
 }
 \details{
 CWatM requires a \code{settings.ini} file to run. This function converts the user-friendly MS Excel   to a \code{settings.ini} file.
-The output file is saved to the same folder as the spreadsheet.
 }
 \examples{
 \dontrun{
-createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin.ini")
-createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "cwatm_settings_sorekBasin")
+createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "./cwatm_settings_sorekBasin.ini")
+createSettingsFile(pathRoot = "C:/IIASA/cwatm/cwatm_settings/cwatm_settings.xlsx", output_name = "./cwatm_settings_sorekBasin")
 }
 }

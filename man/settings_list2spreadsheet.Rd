@@ -4,10 +4,16 @@
 \alias{settings_list2spreadsheet}
 \title{Define CWatM settings & parameters}
 \usage{
-settings_list2spreadsheet(pathRoot, settingsList = NULL, overwrite = FALSE)
+settings_list2spreadsheet(
+  settingsList = NULL,
+  output_path = "./cwatm_settings.xlsx",
+  overwrite = FALSE
+)
 }
 \arguments{
-\item{pathRoot}{a named settingsList object (Defaults to \code{NULL}; see Details)}
+\item{settingsList}{named list, a settingsList object (Defaults to \code{NULL}; see Details)}
+
+\item{output_path}{character vector, the settings spreadsheet's path and name}
 
 \item{overwrite}{logical. Should the function  overwrite existing files?}
 }
@@ -18,12 +24,10 @@ an MS Excel settings spreadsheet (see Details)
 This function creates a default settings spreadsheet, granting the user with complete control over all model parameters.
 }
 \details{
-The \code{pathRoot} variable indicates the root folder that stores CWatM files.
 The user can choose a settingList object (e.g., as in the output of \code{settings_ini2list()}). Otherwise (if \code{NULL}) the function uses a default settingsList
-The output settings file path is: \code{pathRoot/cwatm_settings/cwatm_settings.xlsx}, and the user should make sure that path exists.
 }
 \examples{
 \dontrun{
-defineParameters(pathRoot = "C:/IIASA/cwatm", overwrite = TRUE)
+settings_list2spreadsheet( output_path = "./cwatm_settings.xlsx", overwrite = TRUE)
 }
 }
