@@ -210,8 +210,9 @@ settings_searchFiles <- function(settingsList = NULL, ...) { # overwrite is not 
         if(length(file_mtch) == 0) next()
 
         #pth <- strsplit(pth, split = "/")[[1]]
-        splt_pth[length(splt_pth)] <- file_mtch[1]
-        splt_pth <- paste0(splt_pth, collapse =  "/")
+        pth_update <- strsplit(pth, split = "/")[[1]]
+        pth_update[length(pth_update)] <- file_mtch[1]
+        pth_update <- paste0(pth_update, collapse =  "/")
         if(length(file_mtch) > 1) {
           # take first and comment
           cmnt <- settings[[domain]][settings[[domain]]$variable %in% var, "comment"]
@@ -219,7 +220,7 @@ settings_searchFiles <- function(settingsList = NULL, ...) { # overwrite is not 
           write_cmnt <- "Multiple results were found; taken the first one"
           if(!is.null(cmnt)) write_cmnt <- paste0(write_cmnt, "; ", cmnt)
 
-          updateSetting(settings[[domain]], col = c("value", "comment"), setting = var)   <- c(splt_pth, write_cmnt)
+          updateSetting(settings[[domain]], col = c("value", "comment"), setting = var)   <- c(pth_update, write_cmnt)
         } else {
           # take the only one and comment
           cmnt <- settings[[domain]][settings[[domain]]$variable %in% var, "comment"]
@@ -227,7 +228,7 @@ settings_searchFiles <- function(settingsList = NULL, ...) { # overwrite is not 
           write_cmnt <- "Auto-updated"
           if(!is.null(cmnt)) write_cmnt <- paste0(write_cmnt, "; ", cmnt)
 
-          updateSetting(settings[[domain]], col = c("value", "comment"), setting = var)   <- c(splt_pth, write_cmnt)
+          updateSetting(settings[[domain]], col = c("value", "comment"), setting = var)   <- c(pth_update, write_cmnt)
         }
       }
   }
