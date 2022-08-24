@@ -96,7 +96,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
   if(!is.null(time)) {
     stopifnot("'time' argument should be of class 'Date', 'integer' or 'numeric'" = any(c("integer", "Date", "numeric") %in% class(time)))
 
-    stopifnot("'time' argument should be of length 1 or 2" = setNames(length(time) == 1 || length(time) ==2, errmsg))
+    stopifnot("'time' argument should be of length 1 or 2" = length(time) == 1 || length(time) ==2)
 
     if(length(time) == 2) {
       stopifnot("The first member of the 'time' argument should be smaller than its second member" = time[2] > time[1])
@@ -224,7 +224,8 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
   # msk
   if(isMask) {
-    mask2array <- as.matrix(spatial)
+
+
     mask2Extent <- raster::extentFromCells(spatial, raster::Which(!is.na(spatial), cell = TRUE))
 
     s_x <- which.min(abs(mask2Extent@xmin - x))
@@ -279,7 +280,9 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       ymn = y[e_y] - 0.5 * resy
       ymx = y[s_y]  + 0.5 * resy
 
-      mask2array <- as.matrix(raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx)))
+      tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
+      mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
+      #mask2array <- as.matrix(raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx)))
       if(transpose) mask2array <- raster::t(mask2array)
       if(!is.null(time_arrDim)) mask2array <- array(rep(mask2array, dim(arr)[time_arrDim]), dim = dim(arr))
       arr <- mask2array * arr
@@ -362,9 +365,11 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
         names(tmp) <- varid
         return(tmp)
       }), nm = tempnm)
+    } else if(length(varid) == 1) {
+      out_ds <- out_ds[[1]]
     }
   }
-  if(class(out_ds) %in% "list" && length(out_ds) == 1) out_ds <- out_ds[[1]]
+
   ncdf4::nc_close(tmp)
   return(out_ds)
 }
