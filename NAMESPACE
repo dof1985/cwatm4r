@@ -3,6 +3,8 @@
 export(call_cwatm)
 export(getSettingsDomains)
 export(getSettingsTable)
+export(ncdf2raster)
+export(ncdfInfo)
 export(raster_as_nc)
 export(settings_ini2list)
 export(settings_list2spreadsheet)
