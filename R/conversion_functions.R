@@ -115,8 +115,8 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     }
   }
 
-  if(!is.null(var)) {
-    stopifnot("'var' should be of class 'character'" = class(var) %in% "character")
+  if(!is.null(varName)) {
+    stopifnot("'varName' should be of class 'character'" = class(varName) %in% "character")
   }
 
   ## functions
