@@ -364,6 +364,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       }), nm = tempnm)
     }
   }
+  if(class(out_ds) %in% "list" && length(out_ds) == 1) out_ds <- out_ds[[1]]
   ncdf4::nc_close(tmp)
   return(out_ds)
 }
