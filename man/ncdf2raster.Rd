@@ -35,7 +35,7 @@ ncdf2raster(
 
 \item{fun}{function for spatial summarize.}
 
-\item{temporal_fun}{function for temporal summarize.}
+\item{temporal_fun}{\code{character} One of the following: c("sum", "mean", "sd", "cv")}
 
 \item{crs}{proj4 string input to \code{raster::crs()} used to construct the output \code{RasterLayer}}
 
@@ -62,7 +62,7 @@ time points are being extracted from the file. When \code{Date} is provided it i
 later searched within the values of the file's time dimension. \code{origin} should fit units defined in the file's time dimension.
 
 Summarizing the result can be applied spatially with the \code{fun} and \code{...} argument, or temporally with the \code{temporal_fun} argument.
-Temporal summary applies user defined statistical transformation (e.g., sum, mean, sd) to every grid-cell on the x-y plane across time points,
+Temporal summary applies pre-defined statistical transformation (e.g., sum, mean, sd, and cv, coefficient of variance) to every grid-cell on the x-y plane across time points,
 thus it converts 3 dimensional array to 2 dimensional.
 Spatial summary applies user defined statistical transformation (e.g., sum, mean, sd) to every time point, resulting in a \code{data.frame} with the
 var, time, and summarized value.

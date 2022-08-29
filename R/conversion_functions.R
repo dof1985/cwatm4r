@@ -60,7 +60,7 @@ ncdfInfo <- function(pth, dim = TRUE, attrs = FALSE) {
 #' later searched within the values of the file's time dimension. `origin` should fit units defined in the file's time dimension.
 #'
 #' Summarizing the result can be applied spatially with the `fun` and `...` argument, or temporally with the `temporal_fun` argument.
-#' Temporal summary applies user defined statistical transformation (e.g., sum, mean, sd) to every grid-cell on the x-y plane across time points,
+#' Temporal summary applies pre-defined statistical transformation (e.g., sum, mean, sd, and cv, coefficient of variance) to every grid-cell on the x-y plane across time points,
 #' thus it converts 3 dimensional array to 2 dimensional.
 #' Spatial summary applies user defined statistical transformation (e.g., sum, mean, sd) to every time point, resulting in a `data.frame` with the
 #' var, time, and summarized value.
@@ -74,7 +74,7 @@ ncdfInfo <- function(pth, dim = TRUE, attrs = FALSE) {
 #' @param spatial If not set to `NULL`, defines spatial subset (see Details).
 #' @param varName If not set to `NULL`, defines spatial subset (see Details).
 #' @param fun function for spatial summarize.
-#' @param temporal_fun function for temporal summarize.
+#' @param temporal_fun `character` One of the following: c("sum", "mean", "sd", "cv")
 #' @param crs proj4 string input to `raster::crs()` used to construct the output `RasterLayer`
 #' @param ... additional arguments to function provided to the `fun` argument.
 
@@ -119,6 +119,12 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     stopifnot("'varName' should be of class 'character'" = class(varName) %in% "character")
   }
 
+
+  if(!is.null(temporal_fun)) {
+    stopifnot("'temporal_fun' should be of class 'character'" = class(temporal_fun) %in% "character")
+    stopifnot("'temporal_fun' can recieve one of the following: 'sum', 'mean', 'sd', 'cv'" = temporal_fun %in% c("sum", "mean", "sd", "cv"))
+  }
+
   ## functions
   getAxis <- function(array, idx, axis) {
     ndim <- length(dim(array))
@@ -132,13 +138,6 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     return(do.call("[", c(list(array), idx_list)))
   }
 
-  sumArray <- function(array, axis, fun) {
-    n <- dim(array)[axis]
-    as.array(fun(stack(lapply(seq_len(n), function(i) {
-      raster(getAxis(array = array, idx = i, axis = axis))
-    }))))
-
-  }
 
   # open file
   tmp <- ncdf4::nc_open(pth)
@@ -262,16 +261,41 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       }
     }
 
+    temporal_sum <- FALSE
     if(!is.null(temporal_fun) && !is.null(time_arrDim) && !isPts) { # ignore points
-      arr <- sumArray(array = arr, axis = time_arrDim, fun = temporal_fun)
+        n <- dim(arr)[time_arrDim]
+        rast_tmp <- stack(lapply(seq_len(n), function(i) {
+          raster(getAxis(array = arr, idx = i, axis = time_arrDim))
+        }))
+        # 'sum', 'mean', 'sd', 'cv'
+
+        naMask <- is.na(rast_tmp[[1]])
+        if(temporal_fun == "sum") rast_tmp <- sum(rast_tmp, na.rm = TRUE)
+        if(temporal_fun == "mean") rast_tmp <- sum(rast_tmp, na.rm = TRUE) / n
+        if(temporal_fun == "sd") {
+          m <-  sum(rast_tmp, na.rm = TRUE) / n
+          rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
+        }
+        if(temporal_fun == "cv") {
+          m <-  sum(rast_tmp, na.rm = TRUE) / n
+          rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
+          rast_tmp <- rast_tmp / m
+        }
+
+        rast_tmp[naMask] <- NA
+
+        arr <- as.array(matrix(getValues(rast_tmp), nrow = rast_tmp@nrows, ncol = rast_tmp@ncols, byrow = TRUE))
+
+
 
       tempnm <- NULL
-
-      if(is.null(time)) {
-        time_arrDim <- length(arrDims)
-      } else if (length(time) > 1) {
-        time_arrDim <- length(arrDims)
-      }
+      # arrDims <- dim(arr)
+      # if(is.null(time)) {
+      #   time_arrDim <- length(arrDims)
+      # } else if (length(time) > 1) {
+      #   time_arrDim <- length(arrDims)
+      # }
+      temporal_sum <- TRUE
     }
 
     if(isMask) {
@@ -291,7 +315,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
 
     iter <- 1
-    if(!is.null(time_arrDim)) iter <- seq_len(dim(arr)[time_arrDim])
+    if(!is.null(time_arrDim) && !temporal_sum) iter <- seq_len(dim(arr)[time_arrDim])
     outr <- setNames(lapply(iter, function(l) {
       if(!is.null(time_arrDim)) {
         arr2rast <- as.matrix(getAxis(array = arr, idx = l, axis = time_arrDim))
@@ -306,6 +330,10 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       if(isPts) {
         x_ext <- x_loc - min(x_loc) + 1
         y_ext <- y_loc - min(y_loc) + 1
+        if(transpose) {
+          y_ext <- x_loc - min(x_loc) + 1
+          x_ext <- y_loc - min(y_loc) + 1
+        }
         do.call("rbind", lapply(seq_len(length(x_ext)), function(i) {
           dfpts <- data.frame("x" = x[x_loc[i]],
                               "y" = y[y_loc[i]],
