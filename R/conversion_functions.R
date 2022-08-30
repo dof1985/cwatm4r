@@ -410,194 +410,158 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 #' Converts raster to netCDF
 #'
 #' @description
-#' This function converts a `RasterLayer`, `RasterStack` or a `list` of these classes to a 'NetCDF' file.
+#' This function converts a `RasterLayer`, `RasterStack` or a `list` of these classes to a `netCDF` file, and exports it to a pre-defined output path.
+#'
 #'
 #' @details
-#' This function accepts spatio-temporal data and export it to a NetCDF file.
+#' Inputs can represent a single map (`RasterLayer`), a stacked map (e.g., with multiple variables; `RasterStack`),
+#' a time-series (`list` of maps) or a time-series of stacked maps.
+#' For each variable, a `name` must be provided, so the length of the `name` argument must be equal to the number of stacked layers in the input.
+#' In case a time-series is used (e.g., input raster is a `list`), one shall provide a `time` argument, either as a `numeric` vector or as a `character` vector.
+#' In the latter option, the `character` input will be converted to `numeric` representing the number of days since a user defined `origin`. Both the `time`
+#' and `origin` arguments should be of format `%Y-%m-%d`.
 #' For spatio-temporal data, a list of `RasterLayer`/`RasterStack` objects is expected. Each list item stands for a point in time, and
 #' each `RasterLayer` stands for the spatial dimensions and data of a variable. If multiple variable are required, a `RasterStack` can be used, so
 #' each layer stands for a variable.
-#' In case  temporal dimension is required, the user can use the 'time' argument to specify the time points for the data. This argument
-#' accepts a vector of the class `Date` and assumes the origin is 01-01-1901.
-#' The 'nc_attrs' argument accepts a named list with the following variable attributes: 'dname', 'dlname', 'units'
-#' and 'prec', and some of the global attributes: 'history', 'source_software', 'title', 'keywords', 'source', and 'institution'.
-#' The variable name (dname) and long name (dlname) expects a character vector of the same length of the number of variables, or `NULL`.
-#' If `NULL` is assigned, the variable name is taken from the `RasterLayer` name.
+#' The user must provide the following attributes: `name`, `unit`, `prec`, and `missing_value`. Other optional attributes include `longname` (for each variable),
+#' or the global variables `title`, `author`, `institute`, `source`, and `description`.
 #'
-#'
-#' @param raster_in an input `RasterLayer`, `RasterStack` or a `list`
-#' @param time a vector of class `Date` for the temporal dimension of the dataset (Default: NULL; see Details)
-#' @param nc_attrs a named list with the variable and global attributes to be written to the NetCDF file (see Details)
-#' @param pathfile_out a path and a name for the output NetCDF to be written
-#' @param loud `logical.` Do you want to print the `ncdf4` object to consule?
-#' @param fill.value NoData value (Default: NaN)
-#' @return an NetCDF file (see Details)
+#' @param rast_in an input `RasterLayer`, `RasterStack` or a `list` (see Details)
+#' @param path_out `character` path for the output file with the extension `.nc` or `.nc4` (if `is_ncdf4 = TRUE`)
+#' @param name `character` variable name(s)
+#' @param unit `character` variable attributes describing the unit
+#' @param is_ncdf4 `logical`, if `TRUE` the output is a netCDF 4 file
+#' @param prec `character` variable type, either `integer` or `float`
+#' @param missing_value missing value
+#' @param time `character` representation of a `Date` with format `%Y-%m-%d` or  `numeric` value
+#' @param origin `character` representation of an origin `Date`, used to convert `character` time argument to `numeric`.
+#' @param longname `character` variable long name(s)
+#' @param title `character` a global attribute
+#' @param author `character` a global attribute
+#' @param institute `character` a global attribute
+#' @param source `character` a global attribute
+#' @param description `character` a global attribute
+#' @return NULL
 #'
 #' @examples
 #' \dontrun{
 #' PUT EXAMPLE HERE
 #' }
 #' @export
-raster_as_nc <- function(raster_in, time, nc_attrs, pathfile_out = "../output.nc", loud = FALSE, fill.value = NaN) {
-  print("Reading files")
+raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = "float", missing_value = 32000,
+                        time = NULL, origin = "1901-01-01",
+                        longname = NULL, title =NULL, author = NULL, institute = NULL,
+                        source = NULL, description = NULL) {
 
+  # flip and transpose are not used - currently  flip = NULL, transpose = FALSE,
 
-  if(!is.null(time)) { # check raster_in validity - if time NOT NULL
-    if(!class(raster_in) %in% c("list")) stop(sprintf("raster_in of class '%s' is not valid", class(raster_in)))
-    if(!all(unlist(lapply(raster_in, class)) %in% c("RasterLayer", "RasterStack"))) stop("raster_in of class holds invalid data")
+  # check input rast_in
+  if(class(rast_in) %in% "RasterLayer") {
+    #print("Simple one map to nc")
+    r_template <- rast_in[[1]]
+    stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in))
+    rast_list <- list(rast_in)
   }
 
-  if(is.null(time)) { # check raster_in validity - if time IS NULL
-    if(!class(raster_in) %in% c("list", "RasterStack", "RasterLayer")) stop(sprintf("raster_in of class '%s' is not valid", class(raster_in)))
-    if(class(raster_in) %in% "list") {
-      if(!all(unlist(lapply(raster_in, class)) %in% c("RasterLayer", "RasterStack"))) stop("raster_in of class holds invalid data")
-    } else {
-      raster_in <- list(raster_in)
+  if(class(rast_in) %in% "RasterStack") {
+    #print("Multi-variable map to nc")
+    r_template <- rast_in[[1]]
+    stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in))
+    stopifnot("'name' should hold unique values" = length(unique(name)) == raster::nlayers(rast_in))
+    rast_list <- rast_in
+  }
+
+  if(class(rast_in) %in% "list") {
+
+    r_template <- rast_in[[1]][[1]]
+
+    stopifnot("time-series input requires a numeric/character 'time' vector" = !is.null(time))
+    stopifnot("time-series input requires a numeric/character 'time' vector" = class(time) %in% c("character", "numeric", "integer"))
+
+    if(is.character(time)) {
+      time <- as.numeric(as.Date(time) - as.Date(origin))
+      #print(time)
+    }
+
+    if(class(rast_in[[1]]) %in% "RasterLayer") {
+      #print("Time-series of simple map to nc")
+      rast_list <- list(rast_in)
+    }
+
+    if(class(rast_in[[1]]) %in% "RasterStack") {
+      #print("Time-series of multi-variable map to nc")
+      stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in[[1]]))
+
+      rast_list <- lapply(seq_along(name), function(i) {
+        lapply(seq_len(length(rast_in)), function(t) {
+          rast_in[[t]][[i]]
+        })
+      })
     }
   }
 
+  # build x, y dimensions
+  xvals <- raster::xFromCol(r_template, seq_len(r_template@ncols))
+  yvals <- raster::yFromRow(r_template, seq_len(r_template@nrows))
 
-  if(!is.null(time) & class(time) != "Date") stop("time input should be of class 'Date'")
-  if(!is.null(time) & length(raster_in) != length(time))  stop("Lengths of 'time' and 'raster_in' do not match")
+  nx <- r_template@ncols
+  ny <- r_template@nrows
 
-  # make pathout
-  if(regexpr(".nc$", pathfile_out) == -1) pathfile_out <- paste0(pathfile_out, ".nc")
+  x_def <- c("longitude", "degrees_east")
+  y_def <- c("latitude", "degrees_north")
 
-  # coordinates lon
-  rx <- raster::xres(raster_in[[1]])
-  lon  <- as.array(seq(raster_in[[1]]@extent@xmin + rx * 0.5, raster_in[[1]]@extent@xmax - rx * 0.5, by = rx))
-  nlon <- length(lon)
-
-  # coordinates lat
-  ry <- raster::yres(raster_in[[1]])
-  lat  <- as.array(seq(raster_in[[1]]@extent@ymin + ry * 0.5, raster_in[[1]]@extent@ymax - ry * 0.5, by = ry))
-  nlat <- length(lat)
-
-  # var time
-  if(!is.null(time)) {
-    time <- as.array(as.numeric(time - as.Date("1901-01-01", origin = "1901-01-01")))
-    nt <- length(time)
+  r_crs <- sf::st_as_text(sf::st_crs(r_template@crs))
+  axis_str <- substr(r_crs,  regexec("AXIS\\[", r_crs)[[1]], nchar(r_crs))
+  if(regexec("Latitude", axis_str)[[1]] == -1) {
+    # set x, y_def to metric
+    x_def <- c("Easting", "meters")
+    y_def <- c("Northing", "meters")
   }
 
+  x_lon <- ncdf4::ncdim_def(x_def[1], x_def[2], xvals)
+  y_lat <- ncdf4::ncdim_def(y_def[1], y_def[2], yvals)
 
-  print("Mapping data to array")
+  nt <- 1
+  if(!is.null(time)) nt <- length(time)
+  t_time <- ncdf4::ncdim_def( "Time", "days since 1901-01-01", 0, unlim=TRUE )
 
-  # map number of variables
-  if(class(raster_in[[1]]) %in% "RasterLayer") {
-    n <- 1
-  } else {
-    n <- unique(unlist(lapply(raster_in, function(x) length(x@layers))))
-  }
+  dims <- list(x_lon, y_lat, t_time)
 
-  if(length(n) > 1) stop("all items in 'raster_in' should have the same number of 'RasterLayers'")
+  if(is.null(longname)) longname <- name
 
-  all_Arrays <- lapply(seq_len(n), function(lyr_i) {
-    # build a list of 3D arrays (with time var); each list item is a variable; each array is [lon, lat, time]
-    fillvalue <- as.double(fill.value)
-    dimList <- c(nlon, nlat)
-    if(!is.null(time)) dimList <-c(dimList, nt)
-    arrList <- array(fillvalue, dim = dimList)
-    for(i in seq_len(length(raster_in))) {
-      if(length(raster_in) > 1) {
-        arrList[ , ,i] <- as.array(matrix(raster::flip(raster::t(raster_in[[i]][[lyr_i]]), direction = "x"),
-                                          nrow = nlat, byrow = TRUE))
-      } else {
-        arrList[ , ] <- as.array(matrix(raster::flip(raster::t(raster_in[[i]][[lyr_i]]), direction = "x"),
-                                        nrow = nlat, byrow = TRUE))
-      }
-
-    }
-    return(arrList)
-  })
-
-
-  # define dimensions
-  londim  <- ncdf4::ncdim_def(name = "lon", units = "degrees_east", longname = "longitude_coordinate", vals = as.double(lon))
-  latdim  <- ncdf4::ncdim_def(name = "lat", units = "degrees_north", longname = "latitude_coordinate", vals = as.double(lat))
-  if(!is.null(time)) {
-    timedim <- ncdf4::ncdim_def(name = "time", units = "Days since 1901-01-01", longname = "Days since 1901-01-01", vals = as.double(time))
-  }
-
-  # define a functions' list
-  f_nc <- list("ncvar_def" = ncdf4::ncvar_def,
-               "nc_create" = ncdf4::nc_create)
-
-
-  # define attributes for each variable/data layer
-  arr_def_List <- lapply(seq_len(n), function(lyr_i) {
-    fillvalue <- as.double(fill.value)
-    if(!is.null(nc_attrs$dname)) { # set dname
-      dname <- nc_attrs$dname[[lyr_i]]
-    } else {
-      dname <- names(raster_in[[1]])[lyr_i]
-    }
-
-    if(!is.null(nc_attrs$dlname)) { # set dlname
-      dlname <- nc_attrs$dlname[[lyr_i]]
-    } else {
-      dlname <- names(raster_in[[1]])[lyr_i]
-    }
-
-    dimList <- list(londim, latdim)
-    if(!is.null(time)) {
-      dimList <- c(dimList, list(timedim))
-    }
-
-    arr_def <- ncdf4::ncvar_def(name = dname,
-                                longname = dlname,
-                                units = nc_attrs$units,
-                                dim = dimList,
-                                missval = fillvalue,
-                                prec = nc_attrs$prec)
-
-    return(arr_def)
+  var_tmp <- lapply(seq_along(name), function(ivar) {
+    ncdf4::ncvar_def(name = name[ivar], units = unit, dim = dims, prec = prec, missval = missing_value)
 
   })
 
-  print("Creating file")
-  # create netCDF file and put arrays]\\
-  ncout <- ncdf4::nc_create(filename = pathfile_out,
-                            vars = arr_def_List,
-                            force_v4 = TRUE)
+  ncnew <- ncdf4::nc_create(path_out, var_tmp, force_v4=is_ncdf4)
 
+  for(ivar in seq_along(name)) {
+    rast_list_var <- rast_list[[ivar]]
 
-  # put variables
-  for(i in seq_len(length(arr_def_List))) {
-    dname <- ncout$var[[i]]$name
-    ncdf4::ncvar_put(nc = ncout, varid = arr_def_List[[i]], vals = all_Arrays[[i]])
-    ncdf4::ncatt_put(nc = ncout, dname, "standard_name" , dname)
-    dlname <- ncout$var[[i]]$longname
-    ncdf4::ncatt_put(nc = ncout, dname, "long_name" , dlname)
+    # put longname
+    ncdf4::ncatt_put(ncnew, var_tmp[[ivar]], "long_name", longname[ivar])
+
+    for(itime in seq_len(nt)) {
+
+      r_towrite <- raster::t(rast_list_var[[itime]])
+
+      ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = as.array(r_towrite), start = c(1, 1, itime), count = c(nx, ny, 1))
+      if(!is.null(time)) ncdf4::ncvar_put(nc = ncnew, varid = t_time, vals = time[itime], start = itime, count = 1)
+      ncdf4::nc_sync(ncnew)
+    }
   }
 
+  ## write attributes
 
-  # put additional attributes into dimension and data variables
-  ncdf4::ncatt_put(ncout, "lon", "axis", "X") #,verbose=FALSE) #,definemode=FALSE)
-  ncdf4::ncatt_put(ncout, "lat", "axis", "Y")
-  if(!is.null(time)) {
-    ncdf4::ncatt_put(ncout, "time", "axis", "time")
-  }
-  #ncatt_put(ncout,"time","axis","T")
+  if(!is.null(title)) ncatt_put(ncnew, 0, "title", title)
+  if(!is.null(author)) ncatt_put(ncnew, 0, "author", author)
+  if(!is.null(description)) ncatt_put(ncnew, 0, "description", description)
+  if(!is.null(institute)) ncatt_put(ncnew, 0, "institute", institute)
+  if(!is.null(source)) ncatt_put(ncnew, 0, "source", source)
 
-  #add global attributes
-  if("history" %in% names(nc_attrs)) ncdf4::ncatt_put(ncout, 0, "history", nc_attrs$history)
-  if("Source_software" %in% names(nc_attrs)) ncdf4::ncatt_put(ncout, 0, "Source_software", nc_attrs$Source_software)
-  if("title" %in% names(nc_attrs)) {
-    ncdf4::ncatt_put(ncout, 0, "title", nc_attrs$title)
-  } else if("dlname" %in% names(nc_attrs)) {
-    ncdf4::ncatt_put(ncout, 0, "title", nc_attrs$dlname)
-  }
-  if("keywords" %in% names(nc_attrs)) ncdf4::ncatt_put(ncout, 0, "keywords", nc_attrs$keywords)
-  if("source" %in% names(nc_attrs)) ncdf4::ncatt_put(ncout, 0, "source", nc_attrs$source)
-  if("institution" %in% names(nc_attrs)) ncdf4::ncatt_put(ncout, 0, "institution", nc_attrs$institution)
-
-  # Get a summary of the created file:
-  if(loud) print(ncout)
-
-  ncdf4::nc_close(ncout)
+  ncdf4::nc_close(ncnew)
 }
-
-
 
 # Function to create a settings.ini from an ms excel spreadsheet ####
 
