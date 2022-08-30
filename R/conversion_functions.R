@@ -233,8 +233,8 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     s_y <- which.min(abs(mask2Extent@ymax - y))
     e_y <- which.min(abs(mask2Extent@ymin - y))
 
-    c_x <- e_x - s_x + 1
-    c_y <- e_y - s_y + 1
+    c_x <- min(e_x - s_x + 1, spatial@ncols)
+    c_y <- min(e_y - s_y + 1, spatial@nrows)
   }
 
   varid <- names(tmp$var)
@@ -299,10 +299,12 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     }
 
     if(isMask) {
-      xmn = x[s_x] - 0.5 * resx
-      xmx = x[e_x] + 0.5 * resx
+      xmn = x[s_x] + 0.5 * resx
+      xmx = xmn + c_x * resx
+      #xmx = x[e_x] + 0.5 * resx
       ymn = y[e_y] - 0.5 * resy
-      ymx = y[s_y]  + 0.5 * resy
+      ymx = ymn + c_y * resy
+      #ymx = y[s_y]  - 0.5 * resy
 
       tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
       mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
@@ -347,16 +349,16 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       } else {
 
         # coords
-        xmn = min(x) - 0.5 * resx
+        xmn = min(x) + 0.5 * resx
         xmx = max(x) + 0.5 * resx
         ymn = min(y) - 0.5 * resy
-        ymx = max(y) + 0.5 * resy
+        ymx = max(y) - 0.5 * resy
 
         if(isMask) {
-          xmn = x[s_x] - 0.5 * resx
+          xmn = x[s_x] + 0.5 * resx
           xmx = x[e_x] + 0.5 * resx
           ymn = y[e_y] - 0.5 * resy
-          ymx = y[s_y]  + 0.5 * resy
+          ymx = y[s_y]  - 0.5 * resy
         }
 
 
