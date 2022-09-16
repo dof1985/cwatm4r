@@ -19,7 +19,8 @@ raster2ncdf(
   author = NULL,
   institute = NULL,
   source = NULL,
-  description = NULL
+  description = NULL,
+  axis_names = c("lon", "lat", "time")
 )
 }
 \arguments{

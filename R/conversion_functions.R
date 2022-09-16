@@ -20,8 +20,8 @@
 ncdfInfo <- function(pth, dim = TRUE, attrs = FALSE) {
   tmp <- ncdf4::nc_open(pth)
   info <- list()
+  vars <- names(tmp$var)
   if(dim) {
-    vars <- names(tmp$var)
     dims <- names(tmp$dim)
     info <- c(info, "vars"= list(vars), "dims" = list(dims))
   }
@@ -227,14 +227,25 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
     mask2Extent <- raster::extentFromCells(spatial, raster::Which(!is.na(spatial), cell = TRUE))
 
-    s_x <- which.min(abs(mask2Extent@xmin - x))
-    e_x <- which.min(abs(mask2Extent@xmax - x))
+    mask_count_x <- (mask2Extent@xmax - mask2Extent@xmin) / resx
+    mask_count_y <- (mask2Extent@ymax - mask2Extent@ymin) / resy
 
-    s_y <- which.min(abs(mask2Extent@ymax - y))
-    e_y <- which.min(abs(mask2Extent@ymin - y))
+    s_x <- which(min(abs(mask2Extent@xmin - x)) == abs(mask2Extent@xmin - x))
+    s_x <- s_x[length(s_x)]
+    # correct if mask is the same size as input ncdf
+    e_x <- s_x + min(mask_count_x, length(tmp$dim$lon$vals) - 1)
 
-    c_x <- min(e_x - s_x + 1, spatial@ncols)
-    c_y <- min(e_y - s_y + 1, spatial@nrows)
+    #(x[e_x] - x[s_x]) / (e_x - s_x)
+
+    s_y <- which(min(abs(mask2Extent@ymax - y)) == abs(mask2Extent@ymax - y))
+    s_y <- s_y[length(s_y)]
+    # correct if mask is the same size as input ncdf
+    e_y <- s_y + min(mask_count_y, length(tmp$dim$lat$vals) - 1)
+
+    #(y[e_y] - y[s_y]) / (e_y - s_y)
+
+    c_x <- e_x - s_x
+    c_y <- e_y - s_y
   }
 
   varid <- names(tmp$var)
@@ -299,12 +310,10 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     }
 
     if(isMask) {
-      xmn = x[s_x] + 0.5 * resx
-      xmx = xmn + c_x * resx
-      #xmx = x[e_x] + 0.5 * resx
-      ymn = y[e_y] - 0.5 * resy
-      ymx = ymn + c_y * resy
-      #ymx = y[s_y]  - 0.5 * resy
+      xmn = x[s_x]# - 0.5 * resx
+      xmx = x[e_x]# + 0.5 * resx
+      ymn = y[e_y]# - 0.5 * resy
+      ymx = y[s_y]#  + 0.5 * resy
 
       tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
       mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
@@ -349,26 +358,32 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       } else {
 
         # coords
-        xmn = min(x) + 0.5 * resx
+        xmn = min(x) - 0.5 * resx
         xmx = max(x) + 0.5 * resx
         ymn = min(y) - 0.5 * resy
-        ymx = max(y) - 0.5 * resy
+        ymx = max(y) + 0.5 * resy
 
         if(isMask) {
-          xmn = x[s_x] + 0.5 * resx
-          xmx = x[e_x] + 0.5 * resx
-          ymn = y[e_y] - 0.5 * resy
-          ymx = y[s_y]  - 0.5 * resy
+          xmn = x[s_x]# - 0.5 * resx
+          xmx = x[e_x]# + 0.5 * resx
+          ymn = y[e_y]# - 0.5 * resy
+          ymx = y[s_y]#  + 0.5 * resy
         }
 
 
         if(!is.null(fun)) {
           dfout <- data.frame("var"= varid, stringsAsFactors = FALSE)
           if(!is.null(time_arrDim) && is.null(temporal_fun)) dfout$time <- tempnm[l]
-          dfout$value <- fun(arr2rast, ...)
+          dfout$value <- do.call(fun, list(as.numeric(arr2rast), ...))
+
           return(dfout)
         }
+        #print(dim(arr2rast))
+        #print((xmx - xmn) / resx)
+        #print((ymx - ymn) / resy)
+
         rast <- raster::raster(arr2rast, xmn = xmn, xmx = xmx, ymn = ymn, ymx = ymx, crs = raster::crs(crs))
+        if(isMask) rast@extent <- mask2Extent
         if(!is.null(flip)) rast <- raster::flip(rast, direction = flip)
 
         return(rast)
@@ -453,7 +468,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = "float", missing_value = 32000,
                         time = NULL, origin = "1901-01-01",
                         longname = NULL, title =NULL, author = NULL, institute = NULL,
-                        source = NULL, description = NULL) {
+                        source = NULL, description = NULL, axis_names = c("lon", "lat", "time")) {
 
   # flip and transpose are not used - currently  flip = NULL, transpose = FALSE,
 
@@ -509,15 +524,15 @@ raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = 
   nx <- r_template@ncols
   ny <- r_template@nrows
 
-  x_def <- c("longitude", "degrees_east")
-  y_def <- c("latitude", "degrees_north")
+  x_def <- c(axis_names[1], "degrees_east")
+  y_def <- c(axis_names[2], "degrees_north")
 
   r_crs <- sf::st_as_text(sf::st_crs(r_template@crs))
   axis_str <- substr(r_crs,  regexec("AXIS\\[", r_crs)[[1]], nchar(r_crs))
   if(regexec("Latitude", axis_str)[[1]] == -1) {
     # set x, y_def to metric
-    x_def <- c("Easting", "meters")
-    y_def <- c("Northing", "meters")
+    x_def <- c(axis_names[1], "meters")
+    y_def <- c(axis_names[2], "meters")
   }
 
   x_lon <- ncdf4::ncdim_def(x_def[1], x_def[2], xvals)
@@ -525,7 +540,7 @@ raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = 
 
   nt <- 1
   if(!is.null(time)) nt <- length(time)
-  t_time <- ncdf4::ncdim_def( "Time", "days since 1901-01-01", 0, unlim=TRUE )
+  t_time <- ncdf4::ncdim_def(axis_names[3], units = sprintf("days since %s", origin), calendar =  "standard", vals = 0, unlim=TRUE )
 
   dims <- list(x_lon, y_lat, t_time)
 
@@ -547,20 +562,23 @@ raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = 
     for(itime in seq_len(nt)) {
 
       r_towrite <- raster::t(rast_list_var[[itime]])
+      arr_towrite <- matrix(getValues(r_towrite), nrow = r_towrite@nrows, ncol = r_towrite@ncols, byrow = TRUE)
+      #as.array(r_towrite)
+      ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = arr_towrite, start = c(1, 1, itime), count = c(nx, ny, 1))
 
-      ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = as.array(r_towrite), start = c(1, 1, itime), count = c(nx, ny, 1))
       if(!is.null(time)) ncdf4::ncvar_put(nc = ncnew, varid = t_time, vals = time[itime], start = itime, count = 1)
       ncdf4::nc_sync(ncnew)
+
     }
   }
 
   ## write attributes
 
-  if(!is.null(title)) ncatt_put(ncnew, 0, "title", title)
-  if(!is.null(author)) ncatt_put(ncnew, 0, "author", author)
-  if(!is.null(description)) ncatt_put(ncnew, 0, "description", description)
-  if(!is.null(institute)) ncatt_put(ncnew, 0, "institute", institute)
-  if(!is.null(source)) ncatt_put(ncnew, 0, "source", source)
+  if(!is.null(title)) ncdf4::ncatt_put(ncnew, 0, "title", title)
+  if(!is.null(author)) ncdf4::ncatt_put(ncnew, 0, "author", author)
+  if(!is.null(description)) ncdf4::ncatt_put(ncnew, 0, "description", description)
+  if(!is.null(institute)) ncdf4::ncatt_put(ncnew, 0, "institute", institute)
+  if(!is.null(source)) ncdf4::ncatt_put(ncnew, 0, "source", source)
 
   ncdf4::nc_close(ncnew)
 }
