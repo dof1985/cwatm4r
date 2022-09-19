@@ -274,28 +274,28 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
     temporal_sum <- FALSE
     if(!is.null(temporal_fun) && !is.null(time_arrDim) && !isPts) { # ignore points
-        n <- dim(arr)[time_arrDim]
-        rast_tmp <- stack(lapply(seq_len(n), function(i) {
-          raster(getAxis(array = arr, idx = i, axis = time_arrDim))
-        }))
-        # 'sum', 'mean', 'sd', 'cv'
+      n <- dim(arr)[time_arrDim]
+      rast_tmp <- stack(lapply(seq_len(n), function(i) {
+        raster(getAxis(array = arr, idx = i, axis = time_arrDim))
+      }))
+      # 'sum', 'mean', 'sd', 'cv'
 
-        naMask <- is.na(rast_tmp[[1]])
-        if(temporal_fun == "sum") rast_tmp <- sum(rast_tmp, na.rm = TRUE)
-        if(temporal_fun == "mean") rast_tmp <- sum(rast_tmp, na.rm = TRUE) / n
-        if(temporal_fun == "sd") {
-          m <-  sum(rast_tmp, na.rm = TRUE) / n
-          rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
-        }
-        if(temporal_fun == "cv") {
-          m <-  sum(rast_tmp, na.rm = TRUE) / n
-          rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
-          rast_tmp <- rast_tmp / m
-        }
+      naMask <- is.na(rast_tmp[[1]])
+      if(temporal_fun == "sum") rast_tmp <- sum(rast_tmp, na.rm = TRUE)
+      if(temporal_fun == "mean") rast_tmp <- sum(rast_tmp, na.rm = TRUE) / n
+      if(temporal_fun == "sd") {
+        m <-  sum(rast_tmp, na.rm = TRUE) / n
+        rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
+      }
+      if(temporal_fun == "cv") {
+        m <-  sum(rast_tmp, na.rm = TRUE) / n
+        rast_tmp <- sum((rast_tmp - m) ^ 2, na.rm = TRUE) / n
+        rast_tmp <- rast_tmp / m
+      }
 
-        rast_tmp[naMask] <- NA
+      rast_tmp[naMask] <- NA
 
-        arr <- as.array(matrix(getValues(rast_tmp), nrow = rast_tmp@nrows, ncol = rast_tmp@ncols, byrow = TRUE))
+      arr <- as.array(matrix(getValues(rast_tmp), nrow = rast_tmp@nrows, ncol = rast_tmp@ncols, byrow = TRUE))
 
 
 
@@ -748,5 +748,4 @@ settings_list2spreadsheet <- function(settingsList = NULL, output_path = "./cwat
                          #file = paste0(gsub("/", "//", pathRoot), "//CWatM_settings//cwatm_settings.xlsx"),
                          overwrite = overwrite)
 }
-
 
