@@ -330,6 +330,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
     iter <- 1
     if(!is.null(time_arrDim) && !temporal_sum) iter <- seq_len(dim(arr)[time_arrDim])
+
     outr <- setNames(lapply(iter, function(l) {
       if(!is.null(time_arrDim)) {
         arr2rast <- as.matrix(getAxis(array = arr, idx = l, axis = time_arrDim))
@@ -371,6 +372,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
           xmx = x[e_x]# + 0.5 * resx
           ymn = y[e_y]# - 0.5 * resy
           ymx = y[s_y]#  + 0.5 * resy
+
         }
 
 
@@ -541,11 +543,15 @@ raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = 
   x_lon <- ncdf4::ncdim_def(x_def[1], x_def[2], xvals)
   y_lat <- ncdf4::ncdim_def(y_def[1], y_def[2], yvals)
 
-  nt <- 1
-  if(!is.null(time)) nt <- length(time)
-  t_time <- ncdf4::ncdim_def(axis_names[3], units = sprintf("days since %s", origin), calendar =  "standard", vals = 0, unlim=TRUE )
+  dims <- list(x_lon, y_lat)
 
-  dims <- list(x_lon, y_lat, t_time)
+  nt <- 1
+  # if time included add time dimension
+  if(!is.null(time)) {
+    nt <- length(time)
+    t_time <- ncdf4::ncdim_def(axis_names[3], units = sprintf("days since %s", origin), calendar =  "standard", vals = 0, unlim = TRUE)
+    dims <- list(x_lon, y_lat, t_time)
+  }
 
   if(is.null(longname)) longname <- name
 
@@ -566,10 +572,14 @@ raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = 
 
       r_towrite <- raster::t(rast_list_var[[itime]])
       arr_towrite <- matrix(getValues(r_towrite), nrow = r_towrite@nrows, ncol = r_towrite@ncols, byrow = TRUE)
-      #as.array(r_towrite)
-      ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = arr_towrite, start = c(1, 1, itime), count = c(nx, ny, 1))
 
-      if(!is.null(time)) ncdf4::ncvar_put(nc = ncnew, varid = t_time, vals = time[itime], start = itime, count = 1)
+      if(!is.null(time)) {
+        ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = arr_towrite, start = c(1, 1, itime), count = c(nx, ny, 1))
+        ncdf4::ncvar_put(nc = ncnew, varid = t_time, vals = time[itime], start = itime, count = 1)
+      } else {
+        ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = arr_towrite, start = c(1, 1), count = c(nx, ny))
+      }
+
       ncdf4::nc_sync(ncnew)
 
     }
