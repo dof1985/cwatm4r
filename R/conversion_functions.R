@@ -319,10 +319,24 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
       mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
       #mask2array <- as.matrix(raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx)))
       if(transpose) mask2array <- raster::t(mask2array)
-
       if(!is.null(time_arrDim) && !temporal_sum) mask2array <- array(rep(mask2array, dim(arr)[time_arrDim]), dim = dim(arr))
 
-      arr <- mask2array * arr
+      if(all(dim(arr) == dim(mask2array))) {
+        arr <- mask2array * arr
+      } else {
+        xmn = x[s_x] - 0.5 * resx
+        xmx = x[e_x] + 0.5 * resx
+        ymn = y[e_y] - 0.5 * resy
+        ymx = y[s_y]  + 0.5 * resy
+
+        tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
+        mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
+        #mask2array <- as.matrix(raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx)))
+        if(transpose) mask2array <- raster::t(mask2array)
+        if(!is.null(time_arrDim) && !temporal_sum) mask2array <- array(rep(mask2array, dim(arr)[time_arrDim]), dim = dim(arr))
+        arr <- mask2array * arr
+      }
+
 
     }
 
