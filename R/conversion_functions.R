@@ -276,7 +276,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     if(!is.null(temporal_fun) && !is.null(time_arrDim) && !isPts) { # ignore points
       n <- dim(arr)[time_arrDim]
       rast_tmp <- stack(lapply(seq_len(n), function(i) {
-        raster(getAxis(array = arr, idx = i, axis = time_arrDim))
+        raster::raster(getAxis(array = arr, idx = i, axis = time_arrDim))
       }))
       # 'sum', 'mean', 'sd', 'cv'
 
