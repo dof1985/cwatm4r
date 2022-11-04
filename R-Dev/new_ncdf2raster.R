@@ -1,0 +1,147 @@
+rm(list = ls())
+require(raster)
+library(sf)
+#library(cwatm4r)
+devtools::document("c:/users/fridman/documents/GitHub/cwatm4r")
+devtools::load_all("c:/users/fridman/documents/GitHub/cwatm4r")
+
+fin <- "c:/Users/fridman/Dropbox/IIASA/cwatm-dataCollection/Israel_1km/CWATM_data/cwatm_input30sec/landsurface/fractionLandcover-0.nc"
+x <- cwatm4r::ncdf2raster(fin, transpose = TRUE, time = 1:2)
+# get RasterLayer, RasterStack or list of these and export to ncdf; also get the following attributes:
+  # compulsary:
+  # name, unit, prec,
+  # non compulsary:
+  # longname, institute, source, soruce_software,
+
+x1 <- x
+
+rast_in <- lapply(x, `[[`, 1)
+path_out <- "c:/Users/fridman/Documents/test_OneRast.nc"
+name = paste0("test", 1:6)
+unit = "--"
+prec = "float";missing_value = 36000;time = NULL;flip = NULL;transpose = FALSE;
+longname = NULL; institute = NULL; source = NULL;source_software =NULL;is_ncdf4 = FALSE
+
+
+origin = "1901-01-01";time = c("2001-01-01", "2002-01-01")
+raster2ncdf <- function(rast_in, path_out, name, unit, is_ncdf4 = FALSE, prec = "float", missing_value = 32000,
+                        time = NULL, origin = "1901-01-01",
+                        longname = NULL, institute = NULL, source = NULL,
+                        title =NULL, description = NULL, author = NULL) {
+
+  # flip and transpose are not used - currently  flip = NULL, transpose = FALSE,
+
+  # check input rast_in
+  if(class(rast_in) %in% "RasterLayer") {
+    #print("Simple one map to nc")
+    r_template <- rast_in[[1]]
+    stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in))
+    rast_list <- list(rast_in)
+  }
+
+  if(class(rast_in) %in% "RasterStack") {
+    #print("Multi-variable map to nc")
+    r_template <- rast_in[[1]]
+    stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in))
+    stopifnot("'name' should hold unique values" = length(unique(name)) == raster::nlayers(rast_in))
+    rast_list <- rast_in
+  }
+
+  if(class(rast_in) %in% "list") {
+
+    r_template <- rast_in[[1]][[1]]
+
+    stopifnot("time-series input requires a numeric/character 'time' vector" = !is.null(time))
+    stopifnot("time-series input requires a numeric/character 'time' vector" = class(time) %in% c("character", "numeric", "integer"))
+
+    if(is.character(time)) {
+      time <- as.numeric(as.Date(time) - as.Date(origin))
+      #print(time)
+    }
+
+    if(class(rast_in[[1]]) %in% "RasterLayer") {
+      #print("Time-series of simple map to nc")
+      rast_list <- list(rast_in)
+    }
+
+    if(class(rast_in[[1]]) %in% "RasterStack") {
+      #print("Time-series of multi-variable map to nc")
+      stopifnot("'name' argument shall be of the same length as the number of variable" = length(name) == raster::nlayers(rast_in[[1]]))
+
+      rast_list <- lapply(seq_along(name), function(i) {
+        lapply(seq_len(length(rast_in)), function(t) {
+          rast_in[[t]][[i]]
+        })
+      })
+    }
+  }
+
+  # build x, y dimensions
+  xvals <- raster::xFromCol(r_template, seq_len(r_template@ncols))
+  yvals <- raster::yFromRow(r_template, seq_len(r_template@nrows))
+
+  nx <- r_template@ncols
+  ny <- r_template@nrows
+
+  x_def <- c("longitude", "degrees_east")
+  y_def <- c("latitude", "degrees_north")
+
+  r_crs <- sf::st_as_text(sf::st_crs(r_template@crs))
+  axis_str <- substr(r_crs,  regexec("AXIS\\[", r_crs)[[1]], nchar(r_crs))
+  if(regexec("Latitude", axis_str)[[1]] == -1) {
+    # set x, y_def to metric
+    x_def <- c("Easting", "meters")
+    y_def <- c("Northing", "meters")
+  }
+
+  x_lon <- ncdf4::ncdim_def(x_def[1], x_def[2], xvals)
+  y_lat <- ncdf4::ncdim_def(y_def[1], y_def[2], yvals)
+
+  nt <- 1
+  if(!is.null(time)) nt <- length(time)
+  t_time <- ncdf4::ncdim_def( "Time", "days since 1901-01-01", 0, unlim=TRUE )
+
+  dims <- list(x_lon, y_lat, t_time)
+
+  if(is.null(longname)) longname <- name
+
+  var_tmp <- lapply(seq_along(name), function(ivar) {
+    ncdf4::ncvar_def(name = name[ivar], units = unit, dim = dims, prec = prec, missval = missing_value)
+
+  })
+
+  ncnew <- ncdf4::nc_create(path_out, var_tmp, force_v4=is_ncdf4)
+
+  for(ivar in seq_along(name)) {
+    rast_list_var <- rast_list[[ivar]]
+
+    # put longname
+    ncdf4::ncatt_put(ncnew, var_tmp[[ivar]], "long_name", longname[ivar])
+
+    for(itime in seq_len(nt)) {
+
+      r_towrite <- raster::t(rast_list_var[[itime]])
+
+      ncdf4::ncvar_put(nc = ncnew, varid = var_tmp[[ivar]], vals = as.array(r_towrite), start = c(1, 1, itime), count = c(nx, ny, 1))
+      if(!is.null(time)) ncdf4::ncvar_put(nc = ncnew, varid = t_time, vals = time[itime], start = itime, count = 1)
+      ncdf4::nc_sync(ncnew)
+    }
+  }
+
+  ## write attributes
+
+  if(!is.null(title)) ncatt_put(ncnew, 0, "title", title)
+  if(!is.null(author)) ncatt_put(ncnew, 0, "author", author)
+  if(!is.null(description)) ncatt_put(ncnew, 0, "description", description)
+  if(!is.null(institute)) ncatt_put(ncnew, 0, "institute", institute)
+  if(!is.null(source)) ncatt_put(ncnew, 0, "source", source)
+
+  ncdf4::nc_close(ncnew)
+}
+
+
+raster2ncdf(rast_in = lapply(x, `[[`, 1),
+            path_out = "c:/Users/fridman/Documents/test_OneRast.nc",
+            name = "test", "unit" = "--", time = c("2001-01-01", "2002-01-01"))
+
+
