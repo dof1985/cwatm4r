@@ -361,7 +361,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
         if(transpose) mask2array <- raster::t(mask2array)
         if(!is.null(time_arrDim) && !temporal_sum) mask2array <- replicate(n = dim(arr)[time_arrDim], expr = mask2array, simplify = "array")
         arr <- mask2array * arr
-      }
+      }}}
 
 
     iter <- 1
