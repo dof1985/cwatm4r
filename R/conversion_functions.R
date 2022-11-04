@@ -436,7 +436,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     if(isPts && !is.null(time_arrDim)) outr <- do.call("rbind", outr)
     if(!is.null(fun) && is.null(temporal_fun) && !is.null(time_arrDim)) outr <- do.call("rbind", outr)
     return(outr)
-  }), nm = varid)
+  }}), nm = varid)
 
   if((isPts | !is.null(fun)) && length(varid) > 1) out_ds <- do.call("rbind", out_ds)
   if(class(out_ds) %in% "data.frame") row.names(out_ds) <- NULL
