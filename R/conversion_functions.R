@@ -110,9 +110,10 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     stopifnot("'spatial' argument should be of class 'RasterLayer' or 'data.frame'" = any(c("RasterLayer", "data.frame") %in% class(spatial)))
 
     if(class(spatial) == "data.frame") {
-      cond <- all(c(any(c("lat", "Y", "y") %in% names(spatial)), any(c("lon", "X", "x") %in% names(spatial))))
-      stopifnot("Points coordinates columun should recieve one of the following names: c('x', 'y'), c('X', 'Y'), c('lon', 'lat')" = cond)
+      stopifnot("Points coordinates columun should recieve one of the following names: c('x', 'y'), c('X', 'Y'), c('lon', 'lat')" = all(c(any(c("lat", "Y", "y") %in% names(spatial)), any(c("lon", "X", "x") %in% names(spatial)))))
     }
+
+
   }
 
   if(!is.null(varName)) {
@@ -190,6 +191,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
   spatExists <- !is.null(spatial)
   isPts <- FALSE
   isMask <- FALSE
+
   if(spatExists) {
     isPts <- class(spatial) %in% "data.frame"
     isMask <- class(spatial) %in% "RasterLayer"
@@ -244,9 +246,10 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
 
     #(y[e_y] - y[s_y]) / (e_y - s_y)
 
-    c_x <- e_x - s_x
-    c_y <- e_y - s_y
+    c_x <- e_x - s_x + 1
+    c_y <- e_y - s_y + 1
   }
+
 
   varid <- names(tmp$var)
   if(!is.null(varName)) varid <- varName
@@ -310,10 +313,10 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
     }
 
     if(isMask) {
-      xmn = x[s_x]# - 0.5 * resx
-      xmx = x[e_x]# + 0.5 * resx
-      ymn = y[e_y]# - 0.5 * resy
-      ymx = y[s_y]#  + 0.5 * resy
+      xmn = x[s_x] - 0.5 * resx
+      xmx = x[e_x] + 0.5 * resx
+      ymn = y[e_y] - 0.5 * resy
+      ymx = y[s_y]  + 0.5 * resy
 
       tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
       mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
@@ -325,9 +328,9 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
         arr <- mask2array * arr
       } else {
         xmn = x[s_x] - 0.5 * resx
-        xmx = x[e_x] + 0.5 * resx
-        ymn = y[e_y] - 0.5 * resy
-        ymx = y[s_y]  + 0.5 * resy
+        xmx = x[e_x]# + 0.5 * resx
+        ymn = y[e_y]# - 0.5 * resy
+        ymx = y[s_y]#  + 0.5 * resy
 
         tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
         mask2array <- matrix(raster::getValues(tmprast), byrow = TRUE, nrow = tmprast@nrows, ncol = tmprast@ncols)
@@ -337,9 +340,9 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
         if(all(dim(arr) == dim(mask2array))) {
           arr <- mask2array * arr
         } else {
-        xmn = x[s_x] - 0.5 * resx
+        xmn = x[s_x]# - 0.5 * resx
         xmx = x[e_x] #+ 0.5 * resx
-        ymn = y[e_y] #- 0.5 * resy
+        ymn = y[e_y] - 0.5 * resy
         ymx = y[s_y] # + 0.5 * resy
 
         tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
@@ -352,7 +355,7 @@ ncdf2raster <- function(pth, flip = NULL, transpose = FALSE, time = NULL, origin
         } else {
         xmn = x[s_x] #- 0.5 * resx
         xmx = x[e_x] #+ 0.5 * resx
-        ymn = y[e_y] - 0.5 * resy
+        ymn = y[e_y]# - 0.5 * resy
         ymx = y[s_y]#  + 0.5 * resy
 
         tmprast <- raster::crop(spatial, raster::extent(xmn, xmx, ymn, ymx))
